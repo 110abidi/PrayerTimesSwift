@@ -1,3 +1,5 @@
+import Foundation
+
 //
 //  main.swift
 //  PrayerTimes
@@ -6,11 +8,7 @@
 //  Copyright © 2016 Abdullah Alhazmy. All rights reserved.
 //
 
-import Foundation
-
-public class PrayerTimes{
-    
-    
+public class PrayerTimes {
     
     // ---------------------- Global Variables --------------------
     public var caculationMethod : CalculationMethods = .Makkah // CalculationMethods(rawValue:  4)! // caculation method
@@ -35,6 +33,29 @@ public class PrayerTimes{
         case Maghrib = "Maghrib"
         case Isha = "Isha"
         case InvalidTime =  " ---- "
+    }
+    
+    
+    enum SalatsAndQadhas: Int {
+        case Fajr
+        case Sunrise
+        case Dhuhr
+        case Asr
+        case Sunset
+        case Maghrib
+        case Isha
+        
+        var getString: String {
+            switch self {
+            case Fajr: return "Fajr"
+            case Sunrise: return "Sunrise"
+            case Dhuhr: return "Dhuhr"
+            case Asr: return "Asr"
+            case Sunset: return "Sunset"
+            case Maghrib: return "Maghrib"
+            case Isha: return "Isha"
+            }
+        }
     }
     
     
@@ -106,11 +127,6 @@ public class PrayerTimes{
     public init(caculationmethod: CalculationMethods, asrJuristic: AsrJuristicMethods, adjustHighLats:AdjustingMethods , timeFormat:TimeForamts, offsets:[Double]){
         self.offsets = offsets
     }
-    
-    
-    
-    
-    
     
     // ---------------------- Julian Date Functions -----------------------
     // calculate julian date from a calendar date
@@ -214,7 +230,7 @@ public class PrayerTimes{
     
     // -------------------- Interface Functions --------------------
     // return prayer times for a given date
-    func getDatePrayerTimes(year: Int, month: Int, day: Int, latitude: Double, longitude: Double, tZone: Double) -> Set<String> {
+    func getDatePrayerTimes(year: Int, month: Int, day: Int, latitude: Double, longitude: Double, tZone: Double) -> [String: String] {
         lat = latitude
         lng = longitude
         timeZone = tZone
@@ -225,8 +241,7 @@ public class PrayerTimes{
     }
     
     // return prayer times for a given date
-    public func getPrayerTimes(date: NSCalendar, latitude: Double, longitude: Double, tZone: Double) -> Set<String> {
-        
+    public func getPrayerTimes(date: NSCalendar, latitude: Double, longitude: Double, tZone: Double) -> [String: String] {
         let year = (date.component(NSCalendarUnit.Year, fromDate: NSDate()))
         let month = (date.component(NSCalendarUnit.Month, fromDate: NSDate()))
         let day = (date.component(NSCalendarUnit.Day, fromDate: NSDate()))
@@ -235,8 +250,8 @@ public class PrayerTimes{
     }
     
     // set custom values for calculation parameters
-    public func setCustomParams(var params: [Double]) {
-        
+    public func setCustomParams(params: [Double]) { // FIXME: got rid of var
+        var params = params
         var newCustomeParms: [Double] = []
         for i in 1...5 {
             if (params[i] == -1) {
@@ -296,7 +311,7 @@ public class PrayerTimes{
     }
     
     // convert double hours to 12h format
-    func floatToTime12(time: Double,noSuffix: Bool) ->String {
+    func floatToTime12(time: Double, noSuffix: Bool) -> String {
         
         var adujestedTime = time
         
@@ -310,14 +325,14 @@ public class PrayerTimes{
         let minutes = Int(floor( (Double(adujestedTime) - Double(hours)) * 60))
         var suffix: String, result: String
         if (hours >= 12) {
-            suffix = "pm"
+            suffix = "PM"
         } else {
-            suffix = "am"
+            suffix = "AM"
         }
         hours = (((hours+12)-1)%12)+1
         /*hours = (hours + 12) - 1
-        int hrs = (int) hours % 12
-        hrs += 1*/
+         int hrs = (int) hours % 12
+         hrs += 1*/
         if (noSuffix == false) {
             if ((hours >= 0 && hours <= 9) && (minutes >= 0 && minutes <= 9)) {
                 result = "0\(hours):0\((minutes)) \(suffix)"
@@ -372,7 +387,7 @@ public class PrayerTimes{
         
     }
     // compute prayer times at given julian date
-    func computeDayTimes() -> Set<String> {
+    func computeDayTimes() -> [String: String] {
         var times: [Double] = [5, 6, 12, 13, 18, 18, 18] // default times
         for _ in 1...numIterations{
             times = computeTimes(times)
@@ -411,31 +426,33 @@ public class PrayerTimes{
     }
     
     // convert times array to given time format
-    func adjustTimesFormat(times: [Double]) -> Set<String> {
-        
-        var result = Set<String>()
+    func adjustTimesFormat(times: [Double]) -> [String: String] {
+        var result: [String: String] = [:]
         
         if (timeFormat == .Floating) {
+            var count = 0
             for time in times {
-                result.insert(String(time))
+                result[SalatsAndQadhas(rawValue: count)!.getString] = String(time)
+                count += 1
             }
             return result
         }
         
         for i in 0 ... 6{
             if (timeFormat == .Time12) {
-                result.insert(floatToTime12(times[i], noSuffix: false))
+                result[SalatsAndQadhas(rawValue: i)!.getString] = floatToTime12(times[i], noSuffix: false)
             } else if (timeFormat == .Time12NS) {
-                result.insert(floatToTime12(times[i], noSuffix: true))
+                result[SalatsAndQadhas(rawValue: i)!.getString] = floatToTime12(times[i], noSuffix: true)
             } else {
-                result.insert(floatToTime24(times[i]))
+                result[SalatsAndQadhas(rawValue: i)!.getString] = floatToTime24(times[i])
             }
         }
         return result
     }
     
     // adjust Fajr, Isha and Maghrib for locations in higher latitudes
-    func adjustHighLatTimes(var times: [Double]) -> [Double]{
+    func adjustHighLatTimes(times: [Double]) -> [Double]{ // FIXME: Got rid of var
+        var times = times
         let nightTime = timeDiff(times[4], time2: times[1]) // sunset to sunrise
         
         // Adjust Fajr
@@ -590,3 +607,6 @@ extension Double {
         return radiansToDegrees(atan2(1.0, x))
     }
 }
+
+
+
